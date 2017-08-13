@@ -1,0 +1,9 @@
+[package]
+name = "llvm-ir"
+version = "0.1.0"
+authors = ["Henning Günther <raptamei.pi@gmail.com>"]
+
+[dependencies]
+nom = "^3.2"
+num-bigint = "0.1"
+num-traits = "0.1"
