@@ -15,16 +15,16 @@ pub enum Mangling {
 #[derive(Clone,Debug,PartialEq)]
 pub struct DataLayout {
     pub endianess: Option<Endian>,
-    stack_alignment: Option<u64>,
-    alloca_addr_space: Option<AddressSpace>,
-    pointer_alignment: HashMap<AddressSpace,(u64,u64,u64)>,
-    integer_alignment: HashMap<u64,(u64,u64)>,
-    vector_alignment: HashMap<u64,(u64,u64)>,
-    float_alignment: HashMap<u64,(u64,u64)>,
-    object_alignment: Option<(u64,u64)>,
-    mangling: Option<Mangling>,
-    native_ints: Vec<u64>,
-    non_integral_addr_space: Vec<u64>
+    pub stack_alignment: Option<u64>,
+    pub alloca_addr_space: Option<AddressSpace>,
+    pub pointer_alignment: HashMap<AddressSpace,(u64,u64,u64)>,
+    pub integer_alignment: HashMap<u64,(u64,u64)>,
+    pub vector_alignment: HashMap<u64,(u64,u64)>,
+    pub float_alignment: HashMap<u64,(u64,u64)>,
+    pub object_alignment: Option<(u64,u64)>,
+    pub mangling: Option<Mangling>,
+    pub native_ints: Vec<u64>,
+    pub non_integral_addr_space: Vec<u64>
 }
 
 impl DataLayout {
