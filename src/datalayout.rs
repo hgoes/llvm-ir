@@ -56,12 +56,25 @@ impl DataLayout {
             None => 0
         }
     }
+    /// Get the size, the ABI alignment and the prefered alignment for
+    /// pointers in a given address space in bits.
+    ///
+    /// If no size is defined, it defaults to `(64,64,64)`.
     pub fn pointer_alignment(&self,sp: AddressSpace) -> (u64,u64,u64) {
         match self.pointer_alignment.get(&sp) {
             Some(sz) => *sz,
             None => (64,64,64)
         }
     }
+    /// Get the ABI- and prefered alignment for integer types of a
+    /// given size.
+    ///
+    /// If nothing is defined for a type it defaults to:
+    ///
+    /// - `(8,8)` for 1- or 8-bit integers,
+    /// - `(16,16)` for 16-bit integers,
+    /// - `(32,32)` for 32-bit integers,
+    /// - `(32,64)` for 64-bit integers.
     pub fn integer_alignment(&self,w: u64) -> Option<(u64,u64)> {
         match self.integer_alignment.get(&w) {
             Some(res) => Some(*res),
