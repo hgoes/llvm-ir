@@ -1,6 +1,7 @@
 use nom::{IResult,ErrorKind};
 use std::collections::HashMap;
 use helper::*;
+use super::types::{Type};
 
 #[derive(Clone,Debug,PartialEq)]
 pub enum Endian {
@@ -114,6 +115,41 @@ impl DataLayout {
         match self.object_alignment {
             Some(r) => r,
             None => (0,64)
+        }
+    }
+    /// This is a rough estimation without considering alignment
+    pub fn type_size_in_bits(&self,tp: &Type,mp: &HashMap<String,Type>) -> u64 {
+        match tp {
+            &Type::Opaque => 0,
+            &Type::Int(sz) => sz,
+            &Type::Float => 32,
+            &Type::Double => 64,
+            &Type::PPC_FP128 => 128,
+            &Type::FP128 => 128,
+            &Type::X86_FP80 => 80,
+            &Type::Label => 0,
+            &Type::Pointer(_,ref sp) => {
+                let addr_sp = match sp {
+                    &None => 0,
+                    &Some(x) => x
+                };
+                let (sz,_,_) = self.pointer_alignment(addr_sp);
+                sz
+            },
+            &Type::Struct(ref st) => {
+                let mut acc = 0;
+                for el in st.iter() {
+                    acc += self.type_size_in_bits(el,mp);
+                }
+                acc
+            },
+            &Type::Array(sz,ref sub_tp) => sz*self.type_size_in_bits(sub_tp,mp),
+            &Type::Function(_,_,_) => 0,
+            &Type::Named(ref name) => match mp.get(name) {
+                None => panic!("Named type {} not found",name),
+                Some(rtp) => self.type_size_in_bits(rtp,mp)
+            },
+            &Type::Metadata => 0
         }
     }
 }
