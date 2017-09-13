@@ -15,6 +15,7 @@ use datalayout::*;
 use helper::*;
 use types::*;
 use num_traits::cast::FromPrimitive;
+use std::cmp::min;
 
 pub mod datalayout;
 pub mod types;
@@ -1128,10 +1129,10 @@ pub fn module(input: &[u8]) -> IResult<&[u8],Module> {
                 }
             },
             IResult::Error(_) => panic!("Not parsed: {:?}",
-                                        str::from_utf8(&inp[..120])),
+                                        str::from_utf8(&inp[..min(inp.len(),120)])),
             //return IResult::Error(err),
             IResult::Incomplete(_) => panic!("Not parsed: {:?}",
-                                             str::from_utf8(&inp[..120]))
+                                             str::from_utf8(&inp[..min(inp.len(),120)]))
             //return IResult::Incomplete(need)
         }
     }
