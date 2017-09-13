@@ -275,6 +275,7 @@ impl<T> Typed<T> {
 pub enum Value {
     Constant(Constant),
     Local(String),
+    Argument(usize),
     Metadata(Metadata)
 }
 
@@ -287,6 +288,8 @@ pub enum Metadata {
     Bytes(Vec<u8>),
     Location(u64,u64,Box<Metadata>)
 }
+
+const NO_ARGS: [(Option<String>,Type); 0] = [];
 
 named!(module_id<&str>,
        map_res!(delimited!( tag!("; ModuleID = \'"),
@@ -355,7 +358,7 @@ named!(function_definition<(&str,Function)>,
                  blks: cond!(is_defined,
                              do_parse!(char!('{') >>
                                        llvm_nl >>
-                                       blks: many0!(terminated!(basic_block,llvm_nl)) >>
+                                       blks: many0!(terminated!(call!(basic_block,&args[..]),llvm_nl)) >>
                                        char!('}') >>
                                        (blks))) >>
                  (name,Function { linkage: lnk,
@@ -372,19 +375,19 @@ named!(comment,
        preceded!(char!(';'),
                  is_not!("\n")));
 
-named!(basic_block<BasicBlock>,
+named_args!(basic_block<'a>(args: &'a [(Option<String>,Type)])<BasicBlock>,
        do_parse!(name: map_res!(is_not!("} \t\n:"),
                                 str::from_utf8) >>
                  char!(':') >>
-                 instrs: many0!(preceded!(llvm_nl,alt!(instruction |
+                 instrs: many0!(preceded!(llvm_nl,alt!(call!(instruction,args) |
                                                        preceded!(not!(alt!(char!('}') | preceded!(is_not!("} \t\n:"),char!(':')))),
                                                                  map!(map_res!(is_not!("\n"),str::from_utf8),
                                                                       |s| { panic!("Cannot parse instruction: {}",s) }))))) >>
                  (BasicBlock { name: name.to_string(),
                                instrs: instrs })));
 
-named!(instruction<Instruction>,
-       do_parse!(cont: instruction_c >>
+named_args!(instruction<'a>(args: &'a [(Option<String>,Type)])<Instruction>,
+       do_parse!(cont: call!(instruction_c,args) >>
                  meta: fold_many0!(do_parse!(llvm_space >>
                                              char!(',') >>
                                              llvm_space >>
@@ -403,7 +406,8 @@ named!(instruction<Instruction>,
                  (Instruction { content: cont,
                                 metadata: meta })));
 
-named!(call<(CallingConv,Option<(Type,ParAttrs)>,Value,Vec<Typed<Value>>,Vec<AttributeGroup>)>,
+named_args!(call<'a>(ctx_args: &'a [(Option<String>,Type)])
+            <(CallingConv,Option<(Type,ParAttrs)>,Value,Vec<Typed<Value>>,Vec<AttributeGroup>)>,
        ws!(do_parse!(tag!("call") >>
                      cc: alt!(terminated!(calling_conv,llvm_space) |
                               value!(CallingConv::C)) >>
@@ -411,9 +415,9 @@ named!(call<(CallingConv,Option<(Type,ParAttrs)>,Value,Vec<Typed<Value>>,Vec<Att
                      rtp: alt!(map!(tag!("void"),
                                     |_| None) |
                                map!(types,|t| Some((t,pattrs)))) >>
-                     fun: value >>
+                     fun: call!(value,ctx_args) >>
                      char!('(') >>
-                     args: separated_list!(char!(','),typed_value) >>
+                     args: separated_list!(char!(','),call!(typed_value,ctx_args)) >>
                      char!(')') >>
                      attrs: many0!(preceded!(char!('#'),parse_u64)) >>
                      (cc,rtp,fun,args,attrs))));
@@ -430,10 +434,10 @@ named!(cmp_op<CmpOp>,
              map!(tag!("slt"),|_| CmpOp::SLt) |
              map!(tag!("sle"),|_| CmpOp::SLe)));
 
-named!(instruction_c<InstructionC>,
-       alt!(map!(call,
-                 |(cc,rtp,fun,args,attrs)|
-                 InstructionC::Call(None,cc,rtp,fun,args,attrs)) |
+named_args!(instruction_c<'a>(args: &'a [(Option<String>,Type)])<InstructionC>,
+       alt!(map!(call!(call,args),
+                 |(cc,rtp,fun,call_args,attrs)|
+                 InstructionC::Call(None,cc,rtp,fun,call_args,attrs)) |
             do_parse!(tag!("br") >>
                       llvm_space >>
                       res: alt!( do_parse!(tag!("label") >>
@@ -442,7 +446,7 @@ named!(instruction_c<InstructionC>,
                                            (InstructionC::Term(Terminator::Br(name.to_string())))) |
                                  do_parse!(tag!("i1") >>
                                            llvm_space >>
-                                           c: value >>
+                                           c: call!(value,args) >>
                                            llvm_space >>
                                            char!(',') >>
                                            llvm_space >>
@@ -465,24 +469,24 @@ named!(instruction_c<InstructionC>,
                       vol: map!(opt!(terminated!(tag!("volatile"),
                                                  llvm_space)),
                                 |x| x.is_some()) >>
-                      obj: typed_value >>
+                      obj: call!(typed_value,args) >>
                       llvm_space >>
                       char!(',') >>
                       llvm_space >>
-                      ptr: typed_value >>
+                      ptr: call!(typed_value,args) >>
                       llvm_space >>
                       align: alignment >>
                       (InstructionC::Store(vol,obj,ptr,align))) |
             do_parse!(tag!("ret") >>
                       llvm_space >>
-                      rval: alt!( map!(typed_value,Some) |
+                      rval: alt!( map!(call!(typed_value,args),Some) |
                                   map!(tag!("void"),|_| None)) >>
                       (InstructionC::Term(Terminator::Ret(rval)))) |
             do_parse!(tag!("switch") >>
                       llvm_space >>
                       tp: types >>
                       llvm_space >>
-                      val: value >>
+                      val: call!(value,args) >>
                       llvm_space >>
                       char!(',') >>
                       llvm_space >>
@@ -509,7 +513,7 @@ named!(instruction_c<InstructionC>,
                       llvm_space >>
                       char!('=') >>
                       llvm_space >>
-                      cont: alt!(map!(call,
+                      cont: alt!(map!(call!(call,args),
                                       |c| InstructionC::Call(Some(name.to_string()),c.0,c.1,c.2,c.3,c.4)) |
                                  do_parse!(tag!("icmp") >>
                                            llvm_space >>
@@ -517,11 +521,11 @@ named!(instruction_c<InstructionC>,
                                            llvm_space >>
                                            tp: types >>
                                            llvm_space >>
-                                           v1: value >>
+                                           v1: call!(value,args) >>
                                            llvm_space >>
                                            char!(',') >>
                                            llvm_space >>
-                                           v2: value >>
+                                           v2: call!(value,args) >>
                                            (InstructionC::ICmp(name.to_string(),
                                                                op,tp,v1,v2))) |
                                  do_parse!(tag!("load") >>
@@ -529,7 +533,7 @@ named!(instruction_c<InstructionC>,
                                            vol: map!(opt!(terminated!(tag!("volatile"),
                                                                       llvm_space)),
                                                      |x| x.is_some()) >>
-                                           ptr: typed_value >>
+                                           ptr: call!(typed_value,args) >>
                                            llvm_space >>
                                            align: alignment >>
                                            (InstructionC::Unary(name.to_string(),
@@ -542,7 +546,7 @@ named!(instruction_c<InstructionC>,
                                                     map!(tag!("inttoptr"),|_| CastInst::IntToPtr) |
                                                     map!(tag!("ptrtoint"),|_| CastInst::PtrToInt)) >>
                                            llvm_space >>
-                                           val: typed_value >>
+                                           val: call!(typed_value,args) >>
                                            llvm_space >>
                                            tag!("to") >>
                                            llvm_space >>
@@ -550,25 +554,25 @@ named!(instruction_c<InstructionC>,
                                            (InstructionC::Unary(name.to_string(),
                                                                 val,
                                                                 UnaryInst::Cast(trg,op)))) |
-                                 map!(call!(gep,value,false),
+                                 map!(call!(gep,|inp| value(inp,args),false),
                                       |g| InstructionC::GEP(name.to_string(),g)) |
                                  do_parse!(tag!("select") >>
                                            llvm_space >>
                                            tag!("i1") >>
                                            llvm_space >>
-                                           cond: value >>
+                                           cond: call!(value,args) >>
                                            llvm_space >>
                                            char!(',') >>
                                            llvm_space >>
                                            tp1: types >>
                                            llvm_space >>
-                                           v1: value >>
+                                           v1: call!(value,args) >>
                                            llvm_space >>
                                            char!(',') >>
                                            llvm_space >>
-                                           tp2: types >>
+                                           types >>
                                            llvm_space >>
-                                           v2: value >>
+                                           v2: call!(value,args) >>
                                            (InstructionC::Select(name.to_string(),
                                                                  cond,tp1,v1,v2))) |
                                  do_parse!(tag!("phi") >>
@@ -578,7 +582,7 @@ named!(instruction_c<InstructionC>,
                                            trgs: separated_list!(do_parse!(llvm_space >> char!(',') >> llvm_space >> ()),
                                                                  do_parse!(char!('[') >>
                                                                            llvm_space >>
-                                                                           v: value >>
+                                                                           v: call!(value,args) >>
                                                                            llvm_space >>
                                                                            char!(',') >>
                                                                            llvm_space >>
@@ -619,11 +623,11 @@ named!(instruction_c<InstructionC>,
                                            llvm_space >>
                                            tp: types >>
                                            llvm_space >>
-                                           v1: value >>
+                                           v1: call!(value,args) >>
                                            llvm_space >>
                                            char!(',') >>
                                            llvm_space >>
-                                           v2: value >>
+                                           v2: call!(value,args) >>
                                            (InstructionC::Bin(name.to_string(),
                                                               op,tp,v1,v2))) |
                                  do_parse!(tag!("alloca") >>
@@ -631,21 +635,21 @@ named!(instruction_c<InstructionC>,
                                            tp: types >>
                                            llvm_space >>
                                            num: opt!(preceded!(terminated!(char!(','),llvm_space),
-                                                               typed_value)) >>
+                                                               call!(typed_value,args))) >>
                                            align: alignment >>
                                            (InstructionC::Alloca(name.to_string(),tp,num,align)))
                       ) >>
                       (cont))
        ));
 
-named!(typed_value<Typed<Value>>,
+named_args!(typed_value<'a>(args: &'a [(Option<String>,Type)])<Typed<Value>>,
        alt!(do_parse!(tag!("metadata")>>
                       llvm_space >>
-                      r: metadata >>
+                      r: call!(metadata,args) >>
                       (Typed::new(Type::Metadata,Value::Metadata(r)))) |
             do_parse!(tp: types >>
                       llvm_space >>
-                      v: value >>
+                      v: call!(value,args) >>
                       (Typed::new(tp,v)))));
 
 /*named!(typed_constant<Typed<Constant>>,
@@ -653,22 +657,33 @@ named!(typed_value<Typed<Value>>,
                      c: constant >>
                      (Typed::new(tp,c)))));*/
 
-named!(value<Value>,
-       ws!(alt!(map!(local_name,
-                     |name| Value::Local(name.to_string())) |
-                map!(metadata,
-                     Value::Metadata) |
-                map!(constant,
-                     Value::Constant)
-       )));
+named_args!(argument<'a>(args: &'a [(Option<String>,Type)])<usize>,
+            map_opt!(local_name,|name:&str| { let rname = name.to_string();
+                                              args.iter().position(|&(ref arg_name,_)| {
+                                                  match arg_name {
+                                                      &Some(ref oname) => *oname==rname,
+                                                      &None => false
+                                                  }
+                                              }) }));
 
-named!(metadata<Metadata>,
+named_args!(value<'a>(args: &'a [(Option<String>,Type)])<Value>,
+            ws!(alt!(map!(call!(argument,args),
+                          |num| Value::Argument(num)) |
+                     map!(local_name,
+                          |name| Value::Local(name.to_string())) |
+                     map!(call!(metadata,args),
+                          Value::Metadata) |
+                     map!(constant,
+                          Value::Constant)
+            )));
+
+named_args!(metadata<'a>(args: &'a [(Option<String>,Type)])<Metadata>,
        alt!(map!(tag!("null"),|_| Metadata::Null) |
             preceded!(char!('!'),
                       alt!(do_parse!(char!('{') >>
                                      llvm_space >>
                                      els: separated_list!(delimited!(llvm_space,char!(','),llvm_space),
-                                                          metadata) >>
+                                                          call!(metadata,args)) >>
                                      llvm_space >>
                                      char!('}') >>
                                      (Metadata::Struct(els))) |
@@ -698,11 +713,11 @@ named!(metadata<Metadata>,
                                      llvm_space >>
                                      tag!("scope:") >>
                                      llvm_space >>
-                                     sc: metadata >>
+                                     sc: call!(metadata,args) >>
                                      llvm_space >>
                                      char!(')') >>
                                      (Metadata::Location(l,c,Box::new(sc)))))) |
-            map!(typed_value,
+            map!(call!(typed_value,args),
                  |v| Metadata::Value(Box::new(v))))); 
 
 named!(attribute<Attribute>,
@@ -737,23 +752,23 @@ named!(attribute_group<(u64,Vec<Attribute>)>,
                  char!('}') >>
                  (n,attrs)));
 
-named!(named_metadata<(String,Metadata)>,
+named_args!(named_metadata<'a>(args: &'a [(Option<String>,Type)])<(String,Metadata)>,
        do_parse!(char!('!') >>
                  name: map_res!(is_not!(" =!,\n"),
                                 str::from_utf8) >>
                  llvm_space >>
                  char!('=') >>
                  llvm_space >>
-                 def: metadata >>
+                 def: call!(metadata,args) >>
                  (name.to_string(),def)));
 
-named!(num_metadata<(u64,Metadata)>,
+named_args!(num_metadata<'a>(args: &'a [(Option<String>,Type)])<(u64,Metadata)>,
        do_parse!(char!('!') >>
                  name: parse_u64 >>
                  llvm_space >>
                  char!('=') >>
                  llvm_space >>
-                 def: metadata >>
+                 def: call!(metadata,args) >>
                  (name,def)));
 
 named_args!(module_element<'a>(m: &'a mut Module)<()>,
@@ -790,11 +805,11 @@ named_args!(module_element<'a>(m: &'a mut Module)<()>,
                        |(n,attrs)| {
                            m.attr_groups.insert(n,attrs);
                        }) |
-                  map!(named_metadata,
+                  map!(call!(named_metadata,&NO_ARGS),
                        |(n,md)| {
                            m.named_md.insert(n,md);
                        }) |
-                  map!(num_metadata,
+                  map!(call!(num_metadata,&NO_ARGS),
                        |(n,md)| {
                            m.md.insert(n,md);
                        }) |
@@ -1197,17 +1212,17 @@ fn test_value() {
     let txt1 = b"metadata i32 %argc";
     let v1 = Typed::new(Type::Metadata,
                         Value::Metadata(Metadata::Value(Box::new(Typed::new(Type::Int(32),Value::Local("argc".to_string()))))));
-    assert_eq!(typed_value(txt1),
+    assert_eq!(typed_value(txt1,&NO_ARGS),
                IResult::Done(&b""[..],v1));
     let txt2 = b"i64 0";
     let v2 = Typed::new(Type::Int(64),
                         Value::Constant(Constant::Int(BigInt::from(0))));
-    assert_eq!(typed_value(txt2),
+    assert_eq!(typed_value(txt2,&NO_ARGS),
                IResult::Done(&b""[..],v2));
     let txt3 = b"metadata !431";
     let v3 = Typed::new(Type::Metadata,
                         Value::Metadata(Metadata::Ref(431)));
-    assert_eq!(typed_value(txt3),
+    assert_eq!(typed_value(txt3,&NO_ARGS),
                IResult::Done(&b""[..],v3));
 }
 
@@ -1231,20 +1246,20 @@ fn test_instruction() {
     let instr = Instruction { content: c,
                               metadata: dbg };
     let txt = b"call void @llvm.dbg.value(metadata i32 %argc, i64 0, metadata !431, metadata !432), !dbg !433";
-    assert_eq!(instruction(txt),
+    assert_eq!(instruction(txt,&NO_ARGS),
                IResult::Done(&b""[..],instr));
 
     let txt2 = b"%cmp = icmp ne i32 %argc, 2, !dbg !440";
     let c2 = InstructionC::ICmp("cmp".to_string(),
                                 CmpOp::Ne,
                                 Type::Int(32),
-                                Value::Local("argc".to_string()),
+                                Value::Argument(0),
                                 Value::Constant(Constant::Int(BigInt::from(2))));
     let mut dbg2 = HashMap::new();
     dbg2.insert("dbg".to_string(),440);
     let instr2 = Instruction { content: c2,
                                metadata: dbg2 };
-    assert_eq!(instruction(txt2),
+    assert_eq!(instruction(txt2,&[(Some("argc".to_string()),Type::Int(64))]),
                IResult::Done(&b""[..],instr2));
 
     let txt3 = b"br i1 %cmp19, label %if.then21, label %if.end30";
@@ -1253,7 +1268,7 @@ fn test_instruction() {
                                                 "if.end30".to_string()));
     let instr3 = Instruction { content: c3,
                                metadata: HashMap::new() };
-    assert_eq!(instruction(txt3),
+    assert_eq!(instruction(txt3,&NO_ARGS),
                IResult::Done(&b""[..],instr3));
 
 }
