@@ -9,6 +9,8 @@ use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 use std::str;
 use std::str::FromStr;
+use std::fs::File;
+use std::io::Read;
 use datalayout::*;
 use helper::*;
 use types::*;
@@ -1091,11 +1093,18 @@ impl<'a> Consumer<&'a [u8],(),(),Move> for ModuleBuilder {
 }
 
 pub fn parse_module(file: &str) -> Option<Module> {
-    let mut fp = FileProducer::new(file,1024).expect("Cannot open file");
-    let mut builder = ModuleBuilder::new();
-    match fp.run(&mut builder) {
-        None => None,
-        Some(_) => Some(builder.m)
+    let mut buf = Vec::new();
+    let mut f = match File::open(file) {
+        Ok(r) => r,
+        Err(_) => return None
+    };
+    match f.read_to_end(&mut buf) {
+        Ok(_) => {},
+        Err(_) => return None
+    }
+    match module(&buf[..]) {
+        IResult::Done(ninp,m) => if ninp.len()==0 { Some(m) } else { None },
+        _ => None
     }
 }
 
