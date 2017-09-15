@@ -3,7 +3,7 @@ use nom::{IResult,ErrorKind};
 use helper::*;
 
 #[allow(non_camel_case_types)]
-#[derive(PartialEq,Debug,Clone)]
+#[derive(PartialEq,Eq,PartialOrd,Ord,Hash,Debug,Clone)]
 pub enum Type {
     Opaque,
     Int(u64),

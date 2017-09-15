@@ -26,7 +26,7 @@ mod tests;
 pub type Alignment = u64;
 pub type AttributeGroup = u64;
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Hash,Clone,Copy)]
 pub enum Linkage {
     Private,
     Internal,
@@ -41,21 +41,21 @@ pub enum Linkage {
     External
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Hash,Clone,Copy)]
 pub enum Visibility {
     Default,
     Hidden,
     Protected
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Hash,Clone,Copy)]
 pub enum DLLStorageClass {
     Default,
     DLLImport,
     DLLExport
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Hash,Clone,Copy)]
 pub enum ThreadLocal {
     ThreadLocal,
     LocalDynamic,
@@ -63,19 +63,19 @@ pub enum ThreadLocal {
     LocalExec
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Hash,Clone,Copy)]
 pub enum UnnamedAddr {
     UnnamedAddr,
     LocalUnnamedAddr
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Hash,Clone,Copy)]
 pub enum GlobalType {
     Global,
     Constant
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Hash,Clone)]
 pub struct GlobalVariable {
     pub linkage: Option<Linkage>,
     pub visibility: Visibility,
@@ -91,7 +91,7 @@ pub struct GlobalVariable {
     pub alignment: Option<Alignment>,
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Hash,Clone)]
 pub enum Constant {
     Global(String),
     Int(BigInt),
@@ -100,21 +100,21 @@ pub enum Constant {
     NullPtr
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Hash,Clone)]
 pub struct GEP<T> {
     pub ptr: Typed<T>,
     pub inbounds: bool,
     pub indices: Vec<(Typed<T>,bool)>
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Hash,Clone)]
 pub struct Attribute {
     pub name: String,
     pub quoted: bool,
     pub value: Option<String>
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug,PartialEq,Eq,Clone)]
 pub struct Module {
     pub id: Option<String>,
     pub datalayout: DataLayout,
@@ -127,7 +127,7 @@ pub struct Module {
     pub md: HashMap<u64,Metadata>
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug,PartialEq,Eq,Clone)]
 pub struct Function {
     pub linkage: Option<Linkage>,
     pub visibility: Visibility,
@@ -146,26 +146,26 @@ impl Function {
     }
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug,PartialEq,Eq,Clone)]
 pub struct BasicBlock {
     pub name: String,
     pub instrs: Vec<Instruction>
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug,PartialEq,Eq,Clone)]
 pub struct Instruction {
     pub content: InstructionC,
     pub metadata: HashMap<String,u64>
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Hash,Clone)]
 pub enum CmpOp {
     Eq,Ne,
     UGt,UGe,ULt,ULe,
     SGt,SGe,SLt,SLe
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Hash,Clone)]
 pub enum CallingConv {
     C,
     Fast,
@@ -179,7 +179,7 @@ pub enum CallingConv {
     Numbered(u64)
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Hash,Clone)]
 pub struct ParAttrs {
     pub zeroext: bool,
     pub signext: bool,
@@ -220,7 +220,7 @@ impl ParAttrs {
     }
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Hash,Clone)]
 pub enum BinOp {
     Add(bool,bool),
     Sub(bool,bool),
@@ -230,7 +230,7 @@ pub enum BinOp {
     SDiv(bool)
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Hash,Clone)]
 pub enum Terminator {
     Br(String),
     BrC(Value,String,String),
@@ -239,7 +239,7 @@ pub enum Terminator {
     Unreachable
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Hash,Clone)]
 pub enum InstructionC {
     Alloca(String,Type,Option<Typed<Value>>,Option<Alignment>),
     Call(Option<String>,CallingConv,Option<(Type,ParAttrs)>,Value,Vec<Typed<Value>>,Vec<AttributeGroup>),
@@ -253,18 +253,18 @@ pub enum InstructionC {
     Term(Terminator)
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Hash,Clone)]
 pub enum UnaryInst {
     Cast(Type,CastInst),
     Load(bool,Option<Alignment>),
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Hash,Clone,Copy)]
 pub enum CastInst {
     Trunc,ZExt,SExt,Bitcast,IntToPtr,PtrToInt
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Hash,Clone)]
 pub struct Typed<T> {
     pub tp: Type,
     pub val: T
@@ -276,7 +276,7 @@ impl<T> Typed<T> {
     }
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Hash,Clone)]
 pub enum Value {
     Constant(Constant),
     Local(String),
@@ -284,7 +284,7 @@ pub enum Value {
     Metadata(Metadata)
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Hash,Clone)]
 pub enum Metadata {
     Null,
     Ref(u64),
@@ -1065,24 +1065,41 @@ impl<'a> Consumer<&'a [u8],(),(),Move> for ModuleBuilder {
     fn handle(&mut self,input: Input<&[u8]>) -> &ConsumerState<(),(),Move> {
         match input {
             Input::Eof(None) => {
+                println!("EOF");
                 self.st = ConsumerState::Done(Move::Consume(0),());
                 &self.st
             },
             Input::Empty => {
+                println!("Empty");
                 self.st = ConsumerState::Continue(Move::Consume(0));
                 &self.st
             },
             Input::Element(sl) | Input::Eof(Some(sl)) => {
+                {
+                    let strs = str::from_utf8(sl).expect("cannot parse utf8");
+                    println!("Handle {}",strs);
+                }
                 match module_element(sl,&mut self.m) {
                     IResult::Done(rest,()) => {
-                        self.st = ConsumerState::Continue(Move::Consume(sl.offset(rest)));
+                        {
+                            let rest_strs = str::from_utf8(rest).expect("cannot parse utf8");
+                            println!("Done: {}",rest_strs);
+                            println!("Consumed: {}",sl.offset(rest));
+                        }
+                        let mut ninp = rest;
+                        while ninp.len() > 0 && (ninp[0]==b' ' || ninp[0]==b'\t' || ninp[0]==b'\n') {
+                            ninp = &ninp[1..];
+                        }
+                        self.st = ConsumerState::Continue(Move::Consume(sl.offset(ninp)));
                         &self.st
                     },
                     IResult::Incomplete(n) => {
+                        println!("Incomplete");
                         self.st = ConsumerState::Continue(Move::Await(n));
                         &self.st
                     },
                     IResult::Error(_) => {
+                        println!("Error");
                         self.st = ConsumerState::Error(());
                         &self.st
                     }
@@ -1109,6 +1126,15 @@ pub fn parse_module(file: &str) -> Option<Module> {
         IResult::Done(ninp,m) => if ninp.len()==0 { Some(m) } else { None },
         _ => None
     }
+    /*let mut fp = FileProducer::new(file,1024).expect("Cannot open file");
+    let mut builder = ModuleBuilder::new();
+    loop {
+        match fp.apply(&mut builder) {
+            &ConsumerState::Error(_) => return None,
+            &ConsumerState::Done(_,_) => return Some(builder.m),
+            &ConsumerState::Continue(_) => {}
+        }
+    }*/
 }
 
 pub fn module(input: &[u8]) -> IResult<&[u8],Module> {

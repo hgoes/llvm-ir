@@ -3,17 +3,17 @@ use std::collections::HashMap;
 use helper::*;
 use super::types::{Type};
 
-#[derive(Clone,Debug,PartialEq)]
+#[derive(Clone,Debug,PartialEq,Eq,PartialOrd,Ord,Hash)]
 pub enum Endian {
     Big,Little
 }
 
-#[derive(Clone,Debug,PartialEq)]
+#[derive(Clone,Debug,PartialEq,Eq,PartialOrd,Ord,Hash)]
 pub enum Mangling {
     ELF,Mips,MachO,Windows,WindowsX86
 }
 
-#[derive(Clone,Debug,PartialEq)]
+#[derive(Clone,Debug,PartialEq,Eq)]
 pub struct DataLayout {
     pub endianess: Option<Endian>,
     pub stack_alignment: Option<u64>,
