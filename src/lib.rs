@@ -440,7 +440,7 @@ named!(cmp_op<CmpOp>,
              map!(tag!("sle"),|_| CmpOp::SLe)));
 
 named_args!(instruction_c<'a>(args: &'a [(Option<String>,Type)])<InstructionC>,
-       alt!(map!(call!(call,args),
+       alt_complete!(map!(call!(call,args),
                  |(cc,rtp,fun,call_args,attrs)|
                  InstructionC::Call(None,cc,rtp,fun,call_args,attrs)) |
             do_parse!(tag!("br") >>
@@ -484,8 +484,8 @@ named_args!(instruction_c<'a>(args: &'a [(Option<String>,Type)])<InstructionC>,
                       (InstructionC::Store(vol,obj,ptr,align))) |
             do_parse!(tag!("ret") >>
                       llvm_space >>
-                      rval: alt!( map!(call!(typed_value,args),Some) |
-                                  map!(tag!("void"),|_| None)) >>
+                      rval: alt_complete!( map!(call!(typed_value,args),Some) |
+                                           map!(tag!("void"),|_| None)) >>
                       (InstructionC::Term(Terminator::Ret(rval)))) |
             do_parse!(tag!("switch") >>
                       llvm_space >>
@@ -648,14 +648,14 @@ named_args!(instruction_c<'a>(args: &'a [(Option<String>,Type)])<InstructionC>,
        ));
 
 named_args!(typed_value<'a>(args: &'a [(Option<String>,Type)])<Typed<Value>>,
-       alt!(do_parse!(tag!("metadata")>>
-                      llvm_space >>
-                      r: call!(metadata,args) >>
-                      (Typed::new(Type::Metadata,Value::Metadata(r)))) |
-            do_parse!(tp: types >>
-                      llvm_space >>
-                      v: call!(value,args) >>
-                      (Typed::new(tp,v)))));
+       alt_complete!(do_parse!(tag!("metadata")>>
+                               llvm_space >>
+                               r: call!(metadata,args) >>
+                               (Typed::new(Type::Metadata,Value::Metadata(r)))) |
+                     do_parse!(tp: types >>
+                               llvm_space >>
+                               v: call!(value,args) >>
+                               (Typed::new(tp,v)))));
 
 /*named!(typed_constant<Typed<Constant>>,
        ws!(do_parse!(tp: types >>
@@ -672,58 +672,58 @@ named_args!(argument<'a>(args: &'a [(Option<String>,Type)])<usize>,
                                               }) }));
 
 named_args!(value<'a>(args: &'a [(Option<String>,Type)])<Value>,
-            ws!(alt!(map!(call!(argument,args),
-                          |num| Value::Argument(num)) |
-                     map!(local_name,
-                          |name| Value::Local(name.to_string())) |
-                     map!(call!(metadata,args),
-                          Value::Metadata) |
-                     map!(constant,
-                          Value::Constant)
-            )));
+            alt_complete!(map!(call!(argument,args),
+                               |num| Value::Argument(num)) |
+                          map!(local_name,
+                               |name| Value::Local(name.to_string())) |
+                          map!(call!(metadata,args),
+                               Value::Metadata) |
+                          map!(constant,
+                               Value::Constant)
+            ));
 
 named_args!(metadata<'a>(args: &'a [(Option<String>,Type)])<Metadata>,
-       alt!(map!(tag!("null"),|_| Metadata::Null) |
-            preceded!(char!('!'),
-                      alt!(do_parse!(char!('{') >>
-                                     llvm_space >>
-                                     els: separated_list!(delimited!(llvm_space,char!(','),llvm_space),
-                                                          call!(metadata,args)) >>
-                                     llvm_space >>
-                                     char!('}') >>
-                                     (Metadata::Struct(els))) |
-                           map!(parse_u64,Metadata::Ref) |
-                           map!(delimited!(char!('"'),
-                                           many0!(alt!(map_res!(map_res!(preceded!(char!('\\'),take!(2)),
-                                                                         str::from_utf8),
-                                                                FromStr::from_str) |
-                                                       map_opt!(be_u8,|c| if c==b'"' { None } else { Some(c) }))),
-                                           char!('"')),
-                                Metadata::Bytes) |
-                           do_parse!(tag!("MDLocation") >>
-                                     llvm_space >>
-                                     char!('(') >>
-                                     llvm_space >>
-                                     tag!("line:") >>
-                                     llvm_space >>
-                                     l: parse_u64 >>
-                                     llvm_space >>
-                                     char!(',') >>
-                                     llvm_space >>
-                                     tag!("column:") >>
-                                     llvm_space >>
-                                     c: parse_u64 >>
-                                     llvm_space >>
-                                     char!(',') >>
-                                     llvm_space >>
-                                     tag!("scope:") >>
-                                     llvm_space >>
-                                     sc: call!(metadata,args) >>
-                                     llvm_space >>
-                                     char!(')') >>
-                                     (Metadata::Location(l,c,Box::new(sc)))))) |
-            map!(call!(typed_value,args),
-                 |v| Metadata::Value(Box::new(v))))); 
+       alt_complete!(map!(tag!("null"),|_| Metadata::Null) |
+                     preceded!(char!('!'),
+                               alt!(do_parse!(char!('{') >>
+                                              llvm_space >>
+                                              els: separated_list!(delimited!(llvm_space,char!(','),llvm_space),
+                                                                   call!(metadata,args)) >>
+                                              llvm_space >>
+                                              char!('}') >>
+                                              (Metadata::Struct(els))) |
+                                    map!(parse_u64,Metadata::Ref) |
+                                    map!(delimited!(char!('"'),
+                                                    many0!(alt!(map_res!(map_res!(preceded!(char!('\\'),take!(2)),
+                                                                                  str::from_utf8),
+                                                                         FromStr::from_str) |
+                                                                map_opt!(be_u8,|c| if c==b'"' { None } else { Some(c) }))),
+                                                    char!('"')),
+                                         Metadata::Bytes) |
+                                    do_parse!(tag!("MDLocation") >>
+                                              llvm_space >>
+                                              char!('(') >>
+                                              llvm_space >>
+                                              tag!("line:") >>
+                                              llvm_space >>
+                                              l: parse_u64 >>
+                                              llvm_space >>
+                                              char!(',') >>
+                                              llvm_space >>
+                                              tag!("column:") >>
+                                              llvm_space >>
+                                              c: parse_u64 >>
+                                              llvm_space >>
+                                              char!(',') >>
+                                              llvm_space >>
+                                              tag!("scope:") >>
+                                              llvm_space >>
+                                              sc: call!(metadata,args) >>
+                                              llvm_space >>
+                                              char!(')') >>
+                                              (Metadata::Location(l,c,Box::new(sc)))))) |
+                     map!(call!(typed_value,args),
+                          |v| Metadata::Value(Box::new(v))))); 
 
 named!(attribute<Attribute>,
        do_parse!(name: alt!(map!(map_res!(alpha,str::from_utf8),
@@ -847,7 +847,7 @@ fn gep<T,F>(input: &[u8],parse: F,paren: bool) -> IResult<&[u8],GEP<T>>
 }
 
 named!(constant<Constant>,
-       alt!( map!(tag!("null"),
+       alt_complete!( map!(tag!("null"),
                   |_| Constant::NullPtr) |
              map!(tag!("false"),
                   |_| Constant::Int(BigInt::from(0))) |
@@ -938,13 +938,13 @@ named!(global_type<GlobalType>,
                  |_| GlobalType::Constant)));
 
 named!(alignment<Option<Alignment>>,
-       opt!(do_parse!(char!(',') >>
-                      llvm_space >>
-                      tag!("align") >>
-                      llvm_space >>
-                      n: parse_u64 >>
-                      llvm_space >>
-                      (n))));
+       opt!(complete!(do_parse!(char!(',') >>
+                                llvm_space >>
+                                tag!("align") >>
+                                llvm_space >>
+                                n: parse_u64 >>
+                                llvm_space >>
+                                (n)))));
             
 named!(global_variable<GlobalVariable>,
        do_parse!(l: opt!(terminated!(linkage,llvm_space)) >>

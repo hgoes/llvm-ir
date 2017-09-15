@@ -31,21 +31,14 @@ fn test_local_name() {
                IResult::Done(&b"="[..], "abc.x"));
 }
 
-/*#[test]
+#[test]
 fn test_module() {
     let str = include_bytes!("minisat.ll");
-    let m = Module { id: Some("minisat.bc".to_string()),
-                     datalayout: DataLayout::new(),
-                     triple: Some("x86_64-unknown-linux-gnu".to_string()),
-                     functions: HashMap::new(),
-                     types: HashMap::new(),
-                     globals: HashMap::new(),
-                     attr_groups: HashMap::new(),
-                     named_md: HashMap::new(),
-                     md: HashMap::new() };
-    assert_eq!(module(str),
-               IResult::Done(&b""[..],m));
-}*/
+    assert!(match module(str) {
+        IResult::Done(rest,_) => rest.len()==0,
+        _ => false
+    })
+}
 
 #[test]
 fn test_function_definition() {
@@ -87,6 +80,22 @@ fn test_global_def() {
         alignment: None };
     assert_eq!(global_variable(txt),
                IResult::Done(&b"\n"[..],glob));
+    let txt1 = b"global i32 10\n";
+    let glob1 = GlobalVariable {
+        linkage: None,
+        visibility: Visibility::Default,
+        dll_storage_class: DLLStorageClass::Default,
+        thread_local: None,
+        unnamed_addr: None,
+        addr_space: None,
+        externally_initialized: false,
+        global_type: GlobalType::Global,
+        types: Type::Int(32),
+        initialization: Some(Constant::Int(BigInt::from(10))),
+        section: None,
+        alignment: None };
+    assert_eq!(global_variable(txt1),
+               IResult::Done(&b"\n"[..],glob1));
 }
 
 /*#[test]
