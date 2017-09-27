@@ -129,6 +129,7 @@ pub struct Module {
 
 #[derive(Debug,PartialEq,Eq,Clone)]
 pub struct Function {
+    pub name: String,
     pub linkage: Option<Linkage>,
     pub visibility: Visibility,
     pub dll_storage_class: DLLStorageClass,
@@ -366,7 +367,8 @@ named!(function_definition<(&str,Function)>,
                                        blks: many0!(terminated!(call!(basic_block,&args[..]),llvm_nl)) >>
                                        char!('}') >>
                                        (blks))) >>
-                 (name,Function { linkage: lnk,
+                 (name,Function { name: name.to_string(),
+                                  linkage: lnk,
                                   visibility: vis,
                                   dll_storage_class: stcls,
                                   cconv: cc,
