@@ -812,13 +812,13 @@ named_args!(module_element<'a>(m: &'a mut Module)<()>,
                        |(n,attrs)| {
                            m.attr_groups.insert(n,attrs);
                        }) |
-                  map!(call!(named_metadata,&NO_ARGS),
-                       |(n,md)| {
-                           m.named_md.insert(n,md);
-                       }) |
                   map!(call!(num_metadata,&NO_ARGS),
                        |(n,md)| {
                            m.md.insert(n,md);
+                       }) |
+                  map!(call!(named_metadata,&NO_ARGS),
+                       |(n,md)| {
+                           m.named_md.insert(n,md);
                        }) |
                   map!(comment,
                        |_| { })));
