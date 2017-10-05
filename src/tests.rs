@@ -45,7 +45,8 @@ fn test_function_definition() {
     let ptr = Type::Pointer(Box::new(Type::Pointer(Box::new(Type::Int(8)),None)),None);
     let args = vec![(Some("argc".to_string()),Type::Int(32)),
                     (Some("argv".to_string()),ptr)];
-    let fun = Function { linkage: None,
+    let fun = Function { name: "main".to_string(),
+                         linkage: None,
                          visibility: Visibility::Default,
                          dll_storage_class: DLLStorageClass::Default,
                          cconv: CallingConv::C,
