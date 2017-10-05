@@ -678,8 +678,6 @@ named_args!(value<'a>(args: &'a [(Option<String>,Type)])<Value>,
                                |num| Value::Argument(num)) |
                           map!(local_name,
                                |name| Value::Local(name.to_string())) |
-                          map!(call!(metadata,args),
-                               Value::Metadata) |
                           map!(constant,
                                Value::Constant)
             ));
