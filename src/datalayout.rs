@@ -211,7 +211,7 @@ fn datalayout_string(inp: &[u8]) -> IResult<&[u8],DataLayout> {
                         },
                         _ => return IResult::Error(ErrorKind::Custom(1))
                     }
-                    input = &input[3..];
+                    input = &input[4..];
                 } else {
                     return IResult::Error(ErrorKind::Custom(2))
                 }
