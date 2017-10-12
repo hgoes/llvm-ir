@@ -415,19 +415,26 @@ named_args!(instruction<'a>(args: &'a [(Option<String>,Type)])<Instruction>,
 
 named_args!(call<'a>(ctx_args: &'a [(Option<String>,Type)])
             <(CallingConv,Option<(Type,ParAttrs)>,Value,Vec<Typed<Value>>,Vec<AttributeGroup>)>,
-       ws!(do_parse!(tag!("call") >>
-                     cc: alt!(terminated!(calling_conv,llvm_space) |
-                              value!(CallingConv::C)) >>
-                     pattrs: par_attrs >>
-                     rtp: alt!(map!(tag!("void"),
-                                    |_| None) |
-                               map!(types,|t| Some((t,pattrs)))) >>
-                     fun: call!(value,ctx_args) >>
-                     char!('(') >>
-                     args: separated_list!(char!(','),call!(typed_value,ctx_args)) >>
-                     char!(')') >>
-                     attrs: many0!(preceded!(char!('#'),parse_u64)) >>
-                     (cc,rtp,fun,args,attrs))));
+            do_parse!(tag!("call") >>
+                      llvm_space >>
+                      cc: alt!(terminated!(calling_conv,llvm_space) |
+                               value!(CallingConv::C)) >>
+                      pattrs: par_attrs >>
+                      rtp: alt!(map!(tag!("void"),
+                                     |_| None) |
+                                map!(types,|t| Some((t,pattrs)))) >>
+                      llvm_space >>
+                      fun: call!(value,ctx_args) >>
+                      llvm_space >>
+                      char!('(') >>
+                      llvm_space >>
+                      args: separated_list!(terminated!(char!(','),
+                                                        llvm_space),
+                                            terminated!(call!(typed_value,ctx_args),
+                                                        llvm_space)) >>
+                      char!(')') >>
+                      attrs: many0!(do_parse!(llvm_space >> char!('#') >> r: parse_u64 >> (r))) >>
+                      (cc,rtp,fun,args,attrs)));
 
 named!(cmp_op<CmpOp>,
        alt!( map!(tag!("eq"),|_| CmpOp::Eq) |
