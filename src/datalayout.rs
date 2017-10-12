@@ -211,7 +211,7 @@ fn datalayout_string(inp: &[u8]) -> IResult<&[u8],DataLayout> {
                         },
                         _ => return IResult::Error(ErrorKind::Custom(1))
                     }
-                    input = &input[2..];
+                    input = &input[3..];
                 } else {
                     return IResult::Error(ErrorKind::Custom(2))
                 }
@@ -331,9 +331,9 @@ fn test_datalayout() {
                                vector_alignment: HashMap::new(),
                                float_alignment: falign,
                                object_alignment: None,
-                               mangling: Some(Mangling::ELF),
+                               mangling: Some(Mangling::MachO),
                                native_ints: vec![8,16,32,64],
                                non_integral_addr_space: Vec::new() };
-    assert_eq!(datalayout(b"target datalayout = \"e-m:e-i64:64-f80:128-n8:16:32:64-S128\""),
+    assert_eq!(datalayout(b"target datalayout = \"e-m:o-i64:64-f80:128-n8:16:32:64-S128\""),
                IResult::Done(&b""[..],layout1));
 }
