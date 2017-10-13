@@ -171,4 +171,22 @@ fn test_instruction() {
     assert_eq!(instruction(txt3,&NO_ARGS),
                IResult::Done(&b""[..],instr3));
 
+    let txt4 = b"store i32 400, i32* getelementptr inbounds ([4 x i32]* @Positive_RA_Alt_Thresh, i32 0, i64 0), align 4";
+    let instr4 = {
+        let ptr = Constant::GEP(Box::new(GEP { ptr: Typed::new(Type::ptr(Type::Array(4,Box::new(Type::Int(32)))),
+                                                               Constant::Global("Positive_RA_Alt_Thresh".into())),
+                                               inbounds: true,
+                                               indices: vec![(Typed::new(Type::Int(32),
+                                                                         Constant::Int(BigInt::from(0))),false),
+                                                             (Typed::new(Type::Int(64),
+                                                                         Constant::Int(BigInt::from(0))),false)] }));
+        let cont = InstructionC::Store(false,Typed::new(Type::Int(32),Value::Constant(Constant::Int(BigInt::from(400)))),
+                                       Typed::new(Type::ptr(Type::Int(32)),
+                                                  Value::Constant(ptr)),
+                                       Some(4));
+        Instruction { content: cont,
+                      metadata: HashMap::new() }
+    };
+    assert_eq!(instruction(txt4,&NO_ARGS),
+               IResult::Done(&b""[..],instr4));
 }
