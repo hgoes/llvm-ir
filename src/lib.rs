@@ -970,7 +970,11 @@ named!(global_variable<GlobalVariable>,
                  llvm_space >>
                  tp: types >>
                  llvm_space >>
-                 init: opt!(terminated!(constant,llvm_space)) >>
+                 init: opt!(terminated!(
+                     alt!(do_parse!(tag!("zeroinitializer") >>
+                                    (Constant::zero_init(&tp))) |
+                          constant),
+                     llvm_space)) >>
                  sec: opt!(do_parse!(char!(',') >>
                                      llvm_space >>
                                      tag!("section") >>
@@ -1172,4 +1176,20 @@ pub fn module(input: &[u8]) -> IResult<&[u8],Module> {
         }
     }
     IResult::Done(&b""[..],m)
+}
+
+impl Constant {
+    pub fn zero_init(tp: &Type) -> Self {
+        match tp {
+            &Type::Int(bw) => Constant::Int(BigInt::from(0)),
+            &Type::Pointer(..) => Constant::NullPtr,
+            &Type::Array(sz,ref stp) => {
+                let mut rvec = Vec::new();
+                rvec.resize(sz as usize,
+                            Constant::zero_init(stp));
+                Constant::Array(rvec)
+            },
+            _ => panic!("zero_init not implemented for {:?}",tp)
+        }
+    }
 }
